@@ -4,7 +4,7 @@ import com.github.tarcv.testing.alchemist.Combiner
 import com.github.tarcv.testing.alchemist.Compiler
 import com.github.tarcv.testing.alchemist.CompilerProvider
 import com.github.tarcv.testing.alchemist.Converter
-import com.github.tarcv.testing.alchemist.Predicate
+import com.github.tarcv.testing.alchemist.common.Or
 import com.github.tarcv.testing.alchemist.web.css.CssAttributeConverter
 import com.github.tarcv.testing.alchemist.web.css.CssClassConverter
 import com.github.tarcv.testing.alchemist.web.css.CssCombiner
@@ -78,7 +78,7 @@ class Test {
         assertEquals(
             CssSelector(".foo.bar, [foo=bar].bar", 4),
             compiler.compile(
-                Predicate.Or(
+                Or(
                     ClassName("foo"),
                     Attribute("foo", "bar")
                 ),
@@ -92,8 +92,8 @@ class Test {
         assertEquals(
             CssSelector("[foo=bar].bar, .foo.bar, .fof.bar", 6),
             compiler.compile(
-                Predicate.Or(
-                    Predicate.Or(
+                Or(
+                    Or(
                         ClassName("foo"),
                         ClassName("fof"),
                     ),

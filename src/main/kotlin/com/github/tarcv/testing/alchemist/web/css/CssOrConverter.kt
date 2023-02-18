@@ -3,12 +3,13 @@ package com.github.tarcv.testing.alchemist.web.css
 import com.github.tarcv.testing.alchemist.CompilerProvider
 import com.github.tarcv.testing.alchemist.Converter
 import com.github.tarcv.testing.alchemist.Predicate
+import com.github.tarcv.testing.alchemist.common.Or
 import org.kodein.type.generic
 
-class CssOrConverter(compilerProvider: CompilerProvider): Converter<Predicate.Or, CssSelectorBase> {
+class CssOrConverter(compilerProvider: CompilerProvider): Converter<Or, CssSelectorBase> {
     private val compiler by lazy { compilerProvider() }
 
-    override fun convert(predicate: Predicate.Or): CssOrPartialSelector? {
+    override fun convert(predicate: Or): CssOrPartialSelector? {
         val allOrVariants = mutableListOf<Predicate>()
         if (!collectOrVariants(allOrVariants, listOf(predicate))) {
             return null
@@ -30,10 +31,10 @@ class CssOrConverter(compilerProvider: CompilerProvider): Converter<Predicate.Or
         return Pair(part1 as List<S>, part2)
     }
 
-    private tailrec fun collectOrVariants(result: MutableList<Predicate>, orPredicates: List<Predicate.Or>): Boolean {
+    private tailrec fun collectOrVariants(result: MutableList<Predicate>, orPredicates: List<Or>): Boolean {
         val (innerOrPredicates, otherPredicates) = orPredicates
             .flatMap { it.predicates }
-            .partitionIsInstance<Predicate, Predicate.Or>()
+            .partitionIsInstance<Predicate, Or>()
         result.addAll(otherPredicates)
 
         if (innerOrPredicates.isEmpty()) {

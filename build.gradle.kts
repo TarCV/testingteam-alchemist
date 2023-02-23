@@ -14,7 +14,8 @@ dependencies {
 
     implementation(kotlin("reflect"))
 
-    // compileOnly to provide matching version of kaverit in the next line, not actually used in the code
+    // 'compileOnly kodein-di' is used only to provide matching version of kaverit in the line after the next,
+    // kodein-di is not actually used in the code
     compileOnly("org.kodein.di:kodein-di:$kodeInVersion")
     implementation("org.kodein.type:kaverit")
 

@@ -2,17 +2,46 @@ package com.github.tarcv.testing.alchemist.web.css
 
 import com.github.tarcv.testing.alchemist.Combiner
 
-object CssCombiner: Combiner<CssSelectorBase> {
-    override fun combine(selectors: List<CssSelectorBase>): CssSelector {
-        return selectors
-            .map {
-                when (it) {
-                    is CssOrPartialSelector -> it.locators
-                    is CssSelector -> listOf(it)
-                }
-            }
+class CssCombiner : Combiner<CssSelectorBase> {
+    private var recursionLock = false
+
+    override fun combine(selectors: List<CssSelectorBase>): CssSelector? {
+        require(!recursionLock)
+        recursionLock = true
+        try {
+            val rootSelector = CssPartialAndSelector(selectors, AndSuffix.SIMPLE)
+            val branches = collectPredicates(rootSelector) ?: return null
+            return CssSelector(
+                branches.joinToString(", ") { it.locator },
+                branches.sumOf { it.cost }
+            )
+        } finally {
+            recursionLock = false
+        }
+    }
+
+    private fun collectPredicates(
+        predicate: CssSelectorBase
+    ): List<CssSelector>? {
+        val orBranches = mutableListOf<CssSelector>()
+        orBranches.addAll(
+            when (predicate) {
+                is CssPartialOrSelector -> predicate.orBranches.flatMap { collectPredicates(it) ?: return null }
+                is CssPartialAndSelector -> processAndPredicate(predicate.andParts, predicate.suffix) ?: return null
+                is CssSelector -> listOf(predicate)
+            } as Collection<CssSelector>
+        )
+        return orBranches
+    }
+
+    private fun processAndPredicate(
+        subPredicates: List<CssSelectorBase>,
+        ascendantSuffix: AndSuffix,
+    ): List<CssSelector>? {
+        return subPredicates
+            .map { collectPredicates(it) ?: return null }
             .reduce { acc, item ->
-                acc.flatMap { l -> 
+                acc.flatMap { l ->
                     item.map { r ->
                         CssSelector(
                             l.locator + r.locator,
@@ -21,10 +50,9 @@ object CssCombiner: Combiner<CssSelectorBase> {
                     }
                 }
             }
-            .let {
-                CssSelector(
-                    it.joinToString(", ") { it.locator },
-                    it.sumOf { it.cost }
+            .map { 
+                it.copy(
+                    locator = it.locator + ascendantSuffix.cssOperator
                 )
             }
     }

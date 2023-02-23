@@ -10,7 +10,7 @@ class Compiler(
 ) {
 
     fun compile(vararg predicates: Predicate): Selector {
-        return compileRaw(predicates)
+        return compileInternal(predicates)
             .minByOrNull { it.cost }
             ?: throw IllegalArgumentException(
                 "Combination not supported: ${predicates.joinToString { it::class.simpleName ?: "?" }}"
@@ -18,10 +18,43 @@ class Compiler(
     }
 
     @JvmOverloads
-    fun compileRaw(
+    fun compileInternal(
         predicates: Array<out Predicate>,
         requireOutSelector: Set<TypeToken<out Selector>>? = null
     ): Set<Selector> {
+        val converted = convertInternal(predicates, requireOutSelector)
+        return combineInternal(converted)
+    }
+
+    @JvmOverloads
+    fun combineInternal(
+        converted: List<Selector>,
+        requireOutSelector: Set<TypeToken<out Selector>>? = null
+    ): Set<Selector> {
+        return combiners
+            .filter {
+                it.inSelector().isAssignableFrom(
+                    // TODO: find common super class among all 'converted'
+                    erasedOf(converted.first())
+                )
+            }
+            .filter { 
+                requireOutSelector
+                    ?.contains(it.inSelector())
+                    ?: true
+            }
+            .mapNotNull {
+                @Suppress("UNCHECKED_CAST")
+                (it as Combiner<Selector>).combine(converted)
+            }
+            .toSet()
+    }
+
+    @JvmOverloads
+    fun convertInternal(
+        predicates: Array<out Predicate>,
+        requireOutSelector: Set<TypeToken<out Selector>>? = null
+    ): List<Selector> {
         return predicates
             .map { p ->
                 converters.filter { it.inPredicate().isAssignableFrom(erasedOf(p)) }
@@ -56,19 +89,5 @@ class Compiler(
                         "Combination not supported: ${predicates.joinToString { it::class.simpleName ?: "?" }}"
                     )
             }
-            .let { converted ->
-                combiners
-                    .filter {
-                        it.inSelector().isAssignableFrom(
-                            // TODO: find common super class among all 'converted'
-                            erasedOf(converted.first())
-                        )
-                    }
-                    .mapNotNull {
-                        @Suppress("UNCHECKED_CAST")
-                        (it as Combiner<Selector>).combine(converted)
-                    }
-            }
-            .toSet()
     }
 }

@@ -4,10 +4,15 @@ import com.github.tarcv.testing.alchemist.Combiner
 import com.github.tarcv.testing.alchemist.Compiler
 import com.github.tarcv.testing.alchemist.CompilerProvider
 import com.github.tarcv.testing.alchemist.Converter
-import com.github.tarcv.testing.alchemist.common.Or
+import com.github.tarcv.testing.alchemist.common.AnyOf
+import com.github.tarcv.testing.alchemist.common.HasAscendantWith
+import com.github.tarcv.testing.alchemist.common.HasParentWith
+import com.github.tarcv.testing.alchemist.web.css.CssAndConverter
 import com.github.tarcv.testing.alchemist.web.css.CssAttributeConverter
 import com.github.tarcv.testing.alchemist.web.css.CssClassConverter
 import com.github.tarcv.testing.alchemist.web.css.CssCombiner
+import com.github.tarcv.testing.alchemist.web.css.CssHasAscendantWithConverter
+import com.github.tarcv.testing.alchemist.web.css.CssHasParentWithConverter
 import com.github.tarcv.testing.alchemist.web.css.CssIdConverter
 import com.github.tarcv.testing.alchemist.web.css.CssOrConverter
 import com.github.tarcv.testing.alchemist.web.css.CssSelector
@@ -34,11 +39,14 @@ class Test {
             add { instance(CssIdConverter) }
             add { instance(CssAttributeConverter) }
             add { instance(CssClassConverter) }
+            add { singleton { CssAndConverter(instance()) } }
+            add { singleton { CssHasAscendantWithConverter(instance()) } }
+            add { singleton { CssHasParentWithConverter(instance()) } }
             add { singleton { CssOrConverter(instance()) } }
         }
         bindSet<Combiner<*>> {
             add { instance(IdConverter) }
-            add { instance(CssCombiner) }
+            add { singleton { CssCombiner() } }
         }
         bind<Compiler> { singleton {
             Compiler(instance(), instance())
@@ -78,7 +86,7 @@ class Test {
         assertEquals(
             CssSelector(".foo.bar, [foo=bar].bar", 4),
             compiler.compile(
-                Or(
+                AnyOf(
                     ClassName("foo"),
                     Attribute("foo", "bar")
                 ),
@@ -88,12 +96,46 @@ class Test {
     }
 
     @Test
+    fun singleLevelParentOr() {
+        assertEquals(
+            CssSelector(".foo.fof>.bar, [foo=bar]>.bar", 4),
+            compiler.compile(
+                AnyOf(
+                    HasParentWith(ClassName("foo"), ClassName("fof")),
+                    HasParentWith(Attribute("foo", "bar"))
+                ),
+                ClassName("bar"),
+            )
+        )
+    }
+
+    @Test
+    fun multiLevelParentOr() {
+        assertEquals(
+            CssSelector(".foo[zoo=asdf]>.bar, .fof[zoo=asdf]>.bar, [foo=bar] .bar", 6),
+            compiler.compile(
+                AnyOf(
+                    HasParentWith(
+                        AnyOf(
+                            ClassName("foo"),
+                            ClassName("fof")
+                        ),
+                        Attribute("zoo", "asdf")
+                    ),
+                    HasAscendantWith(Attribute("foo", "bar"))
+                ),
+                ClassName("bar"),
+            )
+        )
+    }
+
+    @Test
     fun multiLevelOr() {
         assertEquals(
-            CssSelector("[foo=bar].bar, .foo.bar, .fof.bar", 6),
+            CssSelector(".foo.bar, .fof.bar, [foo=bar].bar", 6),
             compiler.compile(
-                Or(
-                    Or(
+                AnyOf(
+                    AnyOf(
                         ClassName("foo"),
                         ClassName("fof"),
                     ),

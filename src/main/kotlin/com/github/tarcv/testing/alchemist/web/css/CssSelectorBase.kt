@@ -6,12 +6,27 @@ sealed interface CssSelectorBase: Selector
 data class CssSelector(
     val locator: String,
     override val cost: Int
-): CssSelectorBase {
+): CssSelectorBase, BranchOrSimpleSelector {
     override fun toString(): String = "${this::class.simpleName}: $locator ($cost)"
 }
 
-data class CssOrPartialSelector(
-    val locators: List<CssSelector>
-): CssSelectorBase {
+sealed interface BranchOrSimpleSelector: CssSelectorBase
+sealed interface CombinationOrSimpleSelector: CssSelectorBase
+
+data class CssPartialAndSelector(
+    val andParts: List<CssSelectorBase>,
+    val suffix: AndSuffix
+): CombinationOrSimpleSelector {
     override val cost = -1
+}
+
+data class CssPartialOrSelector(
+    val orBranches: List<CssSelectorBase>,
+): BranchOrSimpleSelector {
+    override val cost = -1
+}
+enum class AndSuffix(val cssOperator: String) {
+    ASCENDANT(" "),
+    PARENT(">"),
+    SIMPLE("")
 }
